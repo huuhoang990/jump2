@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Jump</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width">
+    </head>
+    <body>
+        <div id="container_canvas">
+            <p>Click the image and use ↑(up), ←(left), →(right) to play <br> Collect more than 3000 point in 2 minutes to win <br> F5 to restart</p>
+            <canvas id="canvas_game" width="400" height="400" tabindex="1"></canvas>
+        </div>
+        <script type="text/javascript" src="js/Key.js"></script>
+        <script type="text/javascript" src="js/Function.js"></script>
+        <script type="text/javascript" src="js/SubImage.js"></script>
+        <script type="text/javascript" src="js/TileMap.js"></script>
+        <script type="text/javascript" src="js/Player.js"></script>
+        <script type="text/javascript" src="js/ai.js"></script>
+        <script type="text/javascript" src="js/Tile.js"></script>
+        <script type="text/javascript" src="js/Animation.js"></script>
+        <script type="text/javascript" src="js/Snow.js"></script>
+        <script type="text/javascript" src="js/Gift.js"></script>
+        <script type="text/javascript" src="js/TextCanvas.js"></script>
+        <script type="text/javascript" src="js/control_ai.js"></script>
+        <script type="text/javascript" src="js/Ending.js"></script>
+        <script type="text/javascript">
+            var _canvas = document.getElementById("canvas_game");
+            _canvas.focus();
+            var _context = _canvas.getContext("2d"); 
+            var FPS = 30;
+            var TICKS = 1000/FPS;
+            var running =true;
+            var gameover = false;
+            var timeGameover = 0;
+            var startTime;
+            var lastUpdateTime;
+            
+            var arr_image = [
+               "graphics/bg2.gif",
+               "graphics/tileset.gif",
+               "graphics/player/kirbyfall.gif",
+               "graphics/player/kirbyidle.gif",
+               "graphics/player/kirbyjump.gif",
+               "graphics/player/kirbywalk.gif",
+               "graphics/player/kirbydie.gif",
+               "graphics/player/kirbyhurt.gif",
+               "graphics/player/kirbyWin.gif",
+               "graphics/player/kirbyLose.gif",
+               "graphics/player/tonberry.gif",
+               "graphics/player/tonberryfall.gif",
+               "graphics/player/tonberryjump.gif",
+               "graphics/player/tonberrywalk.gif",
+               "graphics/gift/gift1.gif",
+               "graphics/gift/gift2.gif",
+               "graphics/gift/gift3.gif",
+               "graphics/gift/gift4.gif",
+               "graphics/weather/snowflake2.png"
+            ];
+            var point = 0;
+            var tileMap;
+            var player;
+            var ai_character;
+            var ai_character2;
+            var ai_character3;
+            var control_ai1;
+            var control_ai2;
+            var snow_arr = new Array();
+            var gift_arr = new Array();
+            var texts_arr = new Array();
+            var gameEnding;
+             //event
+            function canvas_keyDown(e){
+                e.preventDefault();
+                if(!gameover){
+                    if(e.keyCode == 37 ){
+                        player.setLeft(true);
+                    }
+                    if(e.keyCode == 39 ){
+                        player.setRight(true);
+                    }
+                     if(e.keyCode == 38 ){
+                        player.setJumping(true);
+                    }
+                }
+                
+            }
+            function canvas_keyUp(e){
+                e.preventDefault();
+                if(!gameover){
+                    if(e.keyCode == 37 ){
+                         player.setLeft(false);
+                     }
+                     if(e.keyCode == 39 ){
+                         player.setRight(false);
+
+                     }
+                      if(e.keyCode == 38 ){
+                         player.setJumping(false);
+                     }
+                }
+            }
+            _canvas.onkeydown = canvas_keyDown;
+            _canvas.onkeyup = canvas_keyUp;
+            //End event
+            
+            
+            
+            function gameLoop(){
+                if(running){
+                    var diffTime = Date.now() - lastUpdateTime;
+                    var numOfUpdate = Math.floor(diffTime/TICKS);
+                    for(var i = 0;i < numOfUpdate;i++){
+                            update();                            
+                    }
+                    if(diffTime >= TICKS)
+                        draw();                                                               
+                    lastUpdateTime += TICKS*numOfUpdate;
+                    diffTime -= TICKS*numOfUpdate;
+                    var sleepTime = TICKS - diffTime;
+                    setTimeout(gameLoop,sleepTime);
+                }
+            }
+            function clear(){
+                _context.clearRect( 0, 0, _canvas.width, _canvas.height);
+            }
+            function init(){
+                startTime = Date.now();
+                lastUpdateTime = startTime;
+                tileMap = new TileMap("testmap3.txt", 32);
+                tileMap.loadTiles("graphics/tileset.gif");
+                tileMap.setX(-2);
+                tileMap.setY(-73);
+                player   = new  Player(tileMap, _canvas.width, _canvas.height);
+                player.setx(50);
+                player.sety(435);
+                
+                ai_character = new AI(tileMap, _canvas.width, _canvas.height);
+                ai_character.setx(230);
+                ai_character.sety(435);
+                
+                ai_character2 = new AI(tileMap, _canvas.width, _canvas.height);
+                ai_character2.setx(600);
+                ai_character2.sety(435);
+                
+                ai_character3 = new AI(tileMap, _canvas.width, _canvas.height);
+                ai_character3.setx(305);
+                ai_character3.sety(175);
+                
+                ai_character4 = new AI(tileMap, _canvas.width, _canvas.height);
+                ai_character4.setx(295);
+                ai_character4.sety(305);
+                
+                for(var i=1;i<8;i++){
+                    var gift_obj = new Gift(tileMap, _canvas.width, _canvas.height);
+                    var x_pos = Math.random()* ( ( tileMap.getWidthMap() - tileMap.getTileSize()*2 )- ( tileMap.getTileSize()*2 ) )+ (tileMap.getTileSize()*2);
+                    gift_obj.setx(x_pos);
+                    gift_obj.sety(0);
+                    gift_arr.push(gift_obj);
+                }
+                
+                for(var i =0; i< 100;i++){
+                    var obj_snow = new Snow(
+                            "graphics/weather/snowflake2.png", 
+                            Math.random()*640, 
+                            Math.random()*480,
+                            _canvas.width, 
+                            _canvas.height
+                            );
+                    snow_arr.push(obj_snow);
+                }
+                gameEnding = new Ending(_canvas.width, _canvas.height);
+                gameLoop();
+            }
+            function update(){
+                tileMap.update();
+                player.update();
+                ai_character.update();
+                ai_character2.update();
+                ai_character3.update();
+                ai_character4.update();
+                for(var i =0;i<snow_arr.length;i++){
+                    snow_arr[i].update();
+                }
+                //update gift
+                if(gift_arr.length>0){
+                    for(var i=0;i<gift_arr.length;i++){
+                        if( gift_arr[i].getReady() == true)
+                            gift_arr[i].update();
+                        else
+                            gift_arr[i].giftReady();
+                        var player_collision = checkcollision(player,gift_arr[i]);
+                        var ai_collision = checkcollision(ai_character,gift_arr[i]);
+                        var ai_collision2 = checkcollision(ai_character2,gift_arr[i]);
+                        var ai_collision3 = checkcollision(ai_character3,gift_arr[i]);
+                        var ai_collision4 = checkcollision(ai_character4,gift_arr[i]);
+                        if(player_collision && !gameover){
+                            var txt_point = new TextCanvas(player.getx(), player.gety(),1000, gift_arr[i].getPoint());
+                            texts_arr.push(txt_point);
+                            point += gift_arr[i].getPoint();
+                            gift_arr.splice(i,1);
+                            player.is_gettingGift();
+                        }
+                        if(ai_collision || ai_collision2 || ai_collision3 || ai_collision4)
+                           gift_arr.splice(i,1);
+                    }
+                }
+                if(gift_arr.length==2){
+                    var gift_obj = new Gift(tileMap, _canvas.width, _canvas.height);
+                    //var x_pos =Math.random()* ( ( tileMap.getWidthMap() - tileMap.getTileSize())- tileMap.getTileSize())+tileMap.getTileSize();
+                    var x_pos = Math.random()* ( ( tileMap.getWidthMap() - tileMap.getTileSize()*2 )- ( tileMap.getTileSize()*2) )+ (tileMap.getTileSize()*2);
+                    gift_obj.setx(x_pos);
+                    gift_obj.sety(-20);
+                    gift_arr.push(gift_obj);
+                }
+                //End update gift
+                
+                //text update
+                if(texts_arr.length>0)
+                    for(var i=0;i<texts_arr.length;i++){
+                        var remove = texts_arr[i].update();
+                        if(remove)
+                            texts_arr.splice(i,1) ;
+                    }
+                //collision ai to player
+                for(var i =0;i<arr_ai.length;i++){
+                    var player_ai_collision = checkcollision(player, arr_ai[i]);
+                    if(player_ai_collision && !this.hurt && !player.getDie() && !gameover){
+                        player.setHurt(true);
+                        player.startHurtTime = Date.now();
+                        player.isColliding();
+                        point= point-100;
+                        if(point<=0){
+                            player.setDie(true);
+                            player.setTimeDie(Date.now());
+                            gameover = true;
+                            timeGameover = Date.now();
+                        }
+                    }
+                }
+             
+                //Ai control
+                control_ai(ai_character);
+                control_ai(ai_character2);
+                control_ai2(ai_character3);
+                control_ai2(ai_character4);
+                
+                if(Date.now()-startTime>=120000){
+                   gameover=true;
+                   player.setLeft(false);
+                   player.setRight(false);
+                }
+                
+                if(gameover){
+                    gameEnding.update( point , player);
+                }
+            }
+            function draw(){
+                clear();
+                _context.fillStyle = "black";
+                _context.fillRect(0,0,_canvas.width,_canvas.height);
+                tileMap.draw(_context);
+                drawText(_context,10,20,"Score : "+point);            
+                if(gift_arr.length>0){
+                    for(var i=0;i<gift_arr.length;i++){
+                        if(gift_arr[i].getReady()==true)
+                            gift_arr[i].draw(_context);
+                    }
+                }
+                for(var i =0;i<snow_arr.length;i++){
+                    snow_arr[i].draw(_context);
+                }            
+                player.draw(_context);
+                ai_character.draw(_context);
+                ai_character2.draw(_context);
+                ai_character3.draw(_context);
+                ai_character4.draw(_context);
+                for(var i=0;i<texts_arr.length;i++){
+                    texts_arr[i].draw(_context);
+                }
+                 if(gameover){
+                    gameEnding.draw(_context);
+                }
+                /*
+                if(gameover && Date.now()-timeGameover >= 3000 && player.getDie()){
+                    console.log("aaaaa");
+                    gameOverFunc(_context, _canvas.width, _canvas.height);
+                }else if(gameover && Date.now()-startTime>=18000){
+                        gameFinished(_context, point,_canvas.width, _canvas.height);
+                }
+                */
+              
+            }
+           
+           //download image before run the game
+           loadImagesFunc(arr_image,0, init, _context);
+           
+        </script>
+    </body>
+</html>
+<style>
+    #canvas_game{
+        border: 1px solid black;
+    }
+    #container_canvas{
+        width: 450px;
+        margin: 0 auto;
+    }
+</style>
